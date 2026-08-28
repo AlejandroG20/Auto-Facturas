@@ -12,21 +12,28 @@ pyautogui.FAILSAFE = True
 pyautogui.PAUSE = 0
 
 
-class StopRequested(Exception):
-    """Raised when the user requests a controlled stop."""
+def wait_if_paused(stop_event: threading.Event) -> None:
+    while stop_event.is_set():
+        time.sleep(0.05)
 
 
-def check_stop(stop_event: threading.Event) -> None:
-    """Interrumpe el flujo si el usuario ha solicitado una parada manual."""
-    if stop_event.is_set():
-        raise StopRequested("Parada manual solicitada con la tecla H.")
+def pause(
+    stop_event: threading.Event,
+    seconds: float = ACTION_DELAY,
+) -> None:
+    remaining = seconds
+    last_tick = time.monotonic()
 
+    while remaining > 0:
+        if stop_event.is_set():
+            wait_if_paused(stop_event)
+            last_tick = time.monotonic()
+            continue
 
-def pause(stop_event: threading.Event, seconds: float = ACTION_DELAY) -> None:
-    """Espera entre acciones sin dejar de responder a la tecla de parada."""
-    if stop_event.wait(seconds):
-        raise StopRequested("Parada manual solicitada con la tecla H.")
-
+        time.sleep(min(0.05, remaining))
+        now = time.monotonic()
+        remaining -= now - last_tick
+        last_tick = now
 
 def write_text(
     text: str,
@@ -35,7 +42,7 @@ def write_text(
     stop_event: threading.Event,
 ) -> None:
     """Escribe texto, registra la acción y aplica la pausa configurada."""
-    check_stop(stop_event)
+    wait_if_paused(stop_event)
     logger.info("[TEXTO] %s: %s", description, text)
 
     keyboard.write(text, delay=0.05)
@@ -49,7 +56,7 @@ def press_key(
     stop_event: threading.Event,
 ) -> None:
     """Pulsa una tecla, registra la acción y aplica la pausa configurada."""
-    check_stop(stop_event)
+    wait_if_paused(stop_event)
     logger.info("[TECLA] %s", description)
     pyautogui.press(key)
     pause(stop_event)
@@ -73,7 +80,6 @@ def countdown(
     """Da tiempo para cambiar de ventana antes de iniciar la automatización."""
     logger.info("Cambia ahora a la ventana del programa de facturación.")
     for remaining in range(seconds, 0, -1):
-        check_stop(stop_event)
+        wait_if_paused(stop_event)
         logger.info("Inicio en %d...", remaining)
-        if stop_event.wait(1):
-            raise StopRequested("Parada solicitada durante la cuenta atrás.")
+        pause(stop_event, 1)
