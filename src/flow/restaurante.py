@@ -10,5 +10,5 @@ def flujo_restaurante(numero: int, logger: logging.Logger, stop_event: threading
     write_text(str(numero), "Número de factura", logger, stop_event)
     press_key("f12", "F12", logger, stop_event)
     press_key("enter", "Enter", logger, stop_event)
-    write_text(f"FRA{numero}", "Referencia", logger, stop_event)
+    write_text(f"FRA {numero}", "Referencia", logger, stop_event)
     press_key("enter", "Enter final", logger, stop_event)

@@ -10,5 +10,5 @@ def flujo_hotel(numero: int, logger: logging.Logger, stop_event: threading.Event
     enter_times(4, logger, stop_event)
     press_key("f12", "F12", logger, stop_event)
     enter_times(0, logger, stop_event)
-    write_text(f"FRA{numero}", "Referencia", logger, stop_event)
+    write_text(f"FRA {numero}", "Referencia", logger, stop_event)
     press_key("enter", "Enter final", logger, stop_event)
