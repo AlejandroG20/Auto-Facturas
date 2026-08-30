@@ -81,7 +81,7 @@ def main() -> None:
             final - inicial + 1,
         )
 
-        print("\nPulsa H para pausar y vuelve a pulsar H para continuar.")
+        print("\nPulsa / para pausar y vuelve a pulsar / para continuar.")
 
         def toggle_pause() -> None:
             if pause_event.is_set():
@@ -90,11 +90,11 @@ def main() -> None:
             else:
                 pause_event.set()
                 logger.warning(
-                    "PROCESO EN PAUSA | Pulsa H para continuar."
+                    "PROCESO EN PAUSA | Pulsa / para continuar."
                 )
 
         keyboard.add_hotkey(
-            "h",
+            "/",
             toggle_pause,
             suppress=True,
             trigger_on_release=True,
