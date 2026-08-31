@@ -4,11 +4,12 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
+from src.core.persistence import data_dir
+
 
 def setup_logger() -> tuple[logging.Logger, Path]:
     """Configura la salida por consola y crea un archivo de log por ejecución."""
-    project_root = Path(__file__).resolve().parents[2]
-    logs_dir = project_root / "logs"
+    logs_dir = data_dir() / "logs"
     logs_dir.mkdir(parents=True, exist_ok=True)
 
     log_path = logs_dir / f"facturas_{datetime.now():%Y%m%d_%H%M%S}.txt"

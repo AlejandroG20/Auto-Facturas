@@ -1,2 +1,4 @@
 PyAutoGUI>=0.9.54,<1.0
 keyboard>=0.13.5,<1.0
+customtkinter>=5.2.2,<6.0
+pyinstaller>=6.0,<7.0

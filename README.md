@@ -1,71 +1,80 @@
 # Auto-Facturas
 
-Automatización de teclado en Python para procesar rangos consecutivos de
-facturas en cuatro cajas: Hotel, Restaurante, Cafetería y Albergue.
+Aplicación de escritorio para ejecutar secuencias de teclado sobre rangos consecutivos de facturas en Hotel, Restaurante, Cafetería y Albergue.
 
 ## Instalación en Windows
 
-Desde PowerShell, dentro de la carpeta del proyecto:
-
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
+
+No se instalan dependencias automáticamente. Si `iniciar.bat` detecta que falta el entorno o una dependencia, muestra los comandos necesarios.
 
 ## Ejecución
 
-Ejecuta siempre el programa desde la carpeta raíz:
+Haz doble clic en `iniciar.bat` o ejecuta:
 
 ```powershell
-python -m src.main
+.\.venv\Scripts\python.exe -m src.main
 ```
 
-Después:
+1. Abre y prepara el programa de facturación.
+2. Selecciona la caja e introduce el rango inclusivo.
+3. Revisa el total y pulsa **Iniciar**.
+4. Durante los 5 segundos de cuenta atrás, selecciona la ventana de facturación.
+5. No escribas ni cambies de ventana mientras se ejecuta.
 
-1. Selecciona la caja.
-2. Introduce la factura inicial y final (ambas incluidas).
-3. Cambia a la ventana del programa durante la cuenta atrás de 5 segundos.
-4. No uses el teclado mientras se ejecuta la secuencia.
+Cada acción conserva la espera existente de 2 segundos. Las referencias se escriben como `FRA 260002`, con espacio.
 
-Cada acción espera 2 segundos. La referencia se escribe como `FRA583`, sin
-espacios ni pulsaciones intermedias.
+## Controles y seguridad
 
-## Seguridad
+- `Ñ`: pausa o continúa al soltar la tecla. La tecla se suprime y no se escribe en la otra aplicación.
+- **Pausar**: detiene el avance; **Continuar** ofrece 5 segundos para volver a la otra ventana.
+- **Detener**: cancela definitivamente, incluso durante una pausa o cuenta atrás.
+- Esquina superior izquierda del ratón: FailSafe de PyAutoGUI, también comprobado antes de texto enviado mediante `keyboard`.
 
-- Pulsa `H` para solicitar una parada controlada.
-- Mueve el ratón rápidamente a la esquina superior izquierda para activar el
-  FailSafe de PyAutoGUI.
-- También puedes usar `Ctrl+C` desde la consola.
+La pausa conserva la factura, el paso, la posición dentro del texto y el tiempo pendiente. Una pulsación que ya fue enviada no puede deshacerse. El progreso significa que la secuencia de teclado terminó; no confirma que la factura haya sido verificada por el programa externo.
 
-## Logs
+## Última configuración y guía
 
-Cada sesión crea un archivo independiente en `logs/` con el formato:
+La caja y el rango se guardan al solicitar un inicio válido. **Última configuración** solo rellena los campos: no inicia ni reanuda el trabajo y puede repetir facturas de una ejecución interrumpida.
+
+La guía aparece al iniciar salvo que se marque **No mostrar al iniciar**, y siempre está disponible en **Ayuda → Guía de uso**.
+
+Los datos locales se guardan fuera del repositorio:
 
 ```text
-facturas_YYYYMMDD_HHMMSS.txt
+%LOCALAPPDATA%\Auto-Facturas\config.json
+%LOCALAPPDATA%\Auto-Facturas\logs\
 ```
 
-El log registra la caja, el rango, cada factura y todas las acciones enviadas.
+Los archivos inexistentes, dañados o incompatibles se ignoran de forma segura.
 
-## Estructura
+## Pruebas seguras
+
+Las pruebas usan mocks y no envían pulsaciones reales:
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+```
+
+## Crear el ejecutable
+
+```powershell
+.\.venv\Scripts\pyinstaller.exe --clean Auto-Facturas.spec
+```
+
+El resultado queda en `dist\Auto-Facturas.exe`. El `.spec` incluye los recursos de CustomTkinter. El ejecutable debe validarse en un Windows con el programa de facturación disponible, comprobando permisos del atajo global, escalado, FailSafe y las cuatro cajas; nunca con facturas reales.
+
+## Estructura principal
 
 ```text
-Auto-Facturas/
-├── logs/
-├── src/
-│   ├── core/
-│   │   ├── logs.py
-│   │   └── utils.py
-│   ├── flow/
-│   │   ├── hotel.py
-│   │   ├── restaurante.py
-│   │   ├── cafeteria.py
-│   │   └── albergue.py
-│   └── main.py
-├── .gitignore
-├── README.md
-└── requirements.txt
+src/main.py              Entrada de la interfaz
+src/gui/app.py           Ventana, guía y cola de eventos
+src/core/runner.py       Hilo y ciclo de ejecución
+src/core/utils.py        pausas, parada y acciones seguras
+src/core/persistence.py  configuración local
+src/flow/                secuencias independientes por caja
+tests/test_core.py       pruebas simuladas
 ```
-
-Cada caja tiene un flujo separado para permitir cambios independientes.

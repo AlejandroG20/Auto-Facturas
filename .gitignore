@@ -2,3 +2,7 @@
 __pycache__/
 *.py[cod]
 logs/*.txt
+dist/
+build/
+*.spec.bak
+config.json
