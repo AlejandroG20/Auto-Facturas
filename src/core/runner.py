@@ -7,7 +7,8 @@ from collections.abc import Callable
 import pyautogui
 
 from src.core.utils import AutomationStopped, ExecutionControl, countdown
-from src.core.notice import DEFAULT_NOTICE_MODE, NoticeCoordinator, NoticeMode
+from src.core.notice import (DEFAULT_NOTICE_MODE, NoticeCoordinator,
+                             NoticeDidNotCloseError, NoticeMode, UnknownScreenError)
 from src.core.window_detection import Win32WindowDetector
 from src.flow.albergue import flujo_albergue
 from src.flow.cafeteria import flujo_cafeteria
@@ -46,10 +47,10 @@ class AutomationRunner:
             return False
         if self.control.pause_event.is_set():
             self.control.pause_event.clear()
-            self.emit("state", state="ejecutando", message="Ejecución reanudada")
+            self.emit("state", state="ejecutando", message="El proceso continúa.")
         else:
             self.control.pause_event.set()
-            self.emit("state", state="pausado", message="Ejecución pausada")
+            self.emit("state", state="pausado", message="Proceso en pausa. Pulsa Continuar cuando estés preparado.")
         return self.control.pause_event.is_set()
 
     def stop(self) -> None:
@@ -62,10 +63,10 @@ class AutomationRunner:
     def _run(self, caja: str, initial: int, final: int, notice_mode: NoticeMode) -> None:
         completed, total = 0, final - initial + 1
         try:
-            self.emit("state", state="cuenta atrás", message="Selecciona el programa de facturación")
+            self.emit("state", state="cuenta atrás", message="Selecciona Fortune4 durante la cuenta atrás.")
             countdown(5, self.logger, self.control,
                       lambda value: self.emit("countdown", remaining=value))
-            self.emit("state", state="ejecutando", message="Secuencia en curso")
+            self.emit("state", state="ejecutando", message="Enviando la secuencia de pulsaciones.")
             notice = NoticeCoordinator(Win32WindowDetector(), self.logger)
             for number in range(initial, final + 1):
                 self.emit("progress", current=number, completed=completed, total=total)
@@ -78,13 +79,21 @@ class AutomationRunner:
                 completed += 1
                 self.logger.info("%s | FACTURA %d | FIN", caja.upper(), number)
                 self.emit("progress", current=number, completed=completed, total=total)
-            self.emit("finished", state="completado", message="Secuencias completadas")
+            self.emit("finished", state="completado", message="Secuencia completada. Revisa el resultado en Fortune4.")
         except AutomationStopped:
             self.logger.warning("PROCESO DETENIDO | Solicitud del usuario.")
-            self.emit("finished", state="detenido", message="Ejecución detenida")
+            self.emit("finished", state="detenido", message="El proceso se ha detenido. No se enviarán más pulsaciones.")
         except pyautogui.FailSafeException:
             self.logger.warning("PARADA DE EMERGENCIA | FailSafe activado.")
-            self.emit("finished", state="detenido", message="FailSafe de PyAutoGUI activado")
+            self.emit("finished", state="detenido", message="Parada de seguridad activada. No se enviarán más pulsaciones.")
         except Exception as exc:
             self.logger.exception("ERROR INESPERADO")
-            self.emit("finished", state="error", message=str(exc))
+            if isinstance(exc, UnknownScreenError):
+                message = ("El programa ha encontrado una ventana que no reconoce y se ha detenido "
+                           "para evitar errores. Revisa Fortune4 antes de volver a intentarlo.")
+            elif isinstance(exc, NoticeDidNotCloseError):
+                message = ("El aviso de factura contabilizada no se cerró. El proceso se ha detenido "
+                           "para evitar más pulsaciones.")
+            else:
+                message = "El proceso se ha detenido por un problema inesperado. Revisa el registro antes de volver a intentarlo."
+            self.emit("finished", state="error", message=message)
