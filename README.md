@@ -78,3 +78,44 @@ src/core/persistence.py  configuración local
 src/flow/                secuencias independientes por caja
 tests/test_core.py       pruebas simuladas
 ```
+
+## Aviso de factura contabilizada
+
+Los flujos de **Hotel** y **Albergue** comprueban automáticamente el aviso de factura contabilizada después de las confirmaciones iniciales y antes de continuar con `F12`. El selector ofrece tres modos:
+
+- **Facturas antiguas**: úsalo cuando esperas que aparezca el aviso.
+- **Facturas modernas**: úsalo cuando normalmente no aparece. Si aparece inesperadamente, también se detecta y acepta.
+- **Detección automática**: comprueba cada factura sin presuponer el resultado.
+
+El modo indica el comportamiento esperado, pero nunca provoca una confirmación a ciegas. El aviso solo se acepta cuando la ventana activa y su mensaje coinciden; después se comprueba que haya desaparecido. Si se reconoce `REPFAC`, el flujo sigue sin enviar un `Enter` adicional. Ante una pantalla desconocida o un aviso que no se cierra, la automatización se detiene y registra el motivo.
+
+Aviso observado:
+
+- Título: `Fortune4 para Windows - Green Software (RED)`
+- Mensaje: `Factura contabilizada, no deben modificarse datos económicos`
+- Botón: `Aceptar`
+- Título de la ventana normal del proceso: `Repeticion de Facturas - REPFAC`
+
+#### Método de detección
+
+La detección actual utiliza Win32 para leer la ventana activa y sus controles, sin coordenadas fijas. Normaliza mayúsculas, acentos, espacios duplicados y saltos de línea, pero no acepta mensajes diferentes.
+
+Si Fortune4 no expone el texto de sus controles en el PC del hotel, será necesaria la captura original para añadir la detección visual secundaria. Debe proporcionarse una captura sin recortar; a partir de ella se guardará en recursos una plantilla pequeña de una zona estable del mensaje o del botón `Aceptar`, nunca una comparación de la pantalla completa. La plantilla aún no se incluye porque la captura no estaba disponible en el adjunto recibido.
+
+#### Registro
+
+Genera mensajes claros como:
+
+```text
+HOTEL | Factura 260001 | Aviso de factura contabilizada detectado y aceptado
+HOTEL | Factura 260002 | Aviso no mostrado; continúa el flujo normal
+ALBERGUE | Factura 260003 | Pantalla desconocida; automatización detenida
+```
+
+#### Seguridad y pruebas
+
+- No enviar nunca la confirmación adicional sin detectar previamente el aviso.
+- Respetar la pausa con `Ñ`, la detención y el FailSafe existentes.
+- No cambiar las secuencias actuales de Hotel y Albergue que no estén relacionadas con este aviso.
+- Las pruebas automatizadas usan detectores y pulsaciones simuladas; no abren Fortune4 ni emiten facturas reales.
+- Cubren aviso presente, aviso ausente, pantalla desconocida, aviso distinto, cierre fallido, pausa, parada y aparición inesperada en modo **Facturas modernas**.

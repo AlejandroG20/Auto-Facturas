@@ -5,6 +5,8 @@ import os
 from pathlib import Path
 from typing import Any
 
+from src.core.notice import DEFAULT_NOTICE_MODE, NoticeMode
+
 APP_NAME = "Auto-Facturas"
 VALID_CAJAS = {"Hotel", "Restaurante", "Cafetería", "Albergue"}
 
@@ -38,26 +40,38 @@ def load_settings(path: Path | None = None) -> dict[str, Any] | None:
         start, end = validate_range(value["inicial"], value["final"])
         if caja not in VALID_CAJAS:
             return None
+        try:
+            notice_mode = NoticeMode(value.get("notice_mode", DEFAULT_NOTICE_MODE.value))
+        except ValueError:
+            notice_mode = DEFAULT_NOTICE_MODE
         return {"caja": caja, "inicial": start, "final": end,
+                "notice_mode": notice_mode.value,
                 "show_welcome": bool(value.get("show_welcome", True))}
     except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError):
         return None
 
 
 def save_settings(caja: str, initial: int, final: int,
-                  show_welcome: bool = True, path: Path | None = None) -> None:
+                  show_welcome: bool = True, path: Path | None = None,
+                  notice_mode: NoticeMode | str = DEFAULT_NOTICE_MODE) -> None:
     if caja not in VALID_CAJAS:
         raise ValueError("Caja no válida.")
     start, end = validate_range(initial, final)
+    try:
+        mode = NoticeMode(notice_mode)
+    except ValueError as exc:
+        raise ValueError("Modo de aviso no válido.") from exc
     target = path or settings_path()
     target.parent.mkdir(parents=True, exist_ok=True)
     temporary = target.with_suffix(".tmp")
-    temporary.write_text(json.dumps({"version": 1, "caja": caja, "inicial": start,
-                                     "final": end, "show_welcome": show_welcome},
+    temporary.write_text(json.dumps({"version": 2, "caja": caja, "inicial": start,
+                                     "final": end, "notice_mode": mode.value,
+                                     "show_welcome": show_welcome},
                                     ensure_ascii=False, indent=2), encoding="utf-8")
     temporary.replace(target)
 
 
 def save_welcome_preference(show: bool, path: Path | None = None) -> None:
     current = load_settings(path) or {"caja": "Hotel", "inicial": 0, "final": 0}
-    save_settings(current["caja"], current["inicial"], current["final"], show, path)
+    save_settings(current["caja"], current["inicial"], current["final"], show, path,
+                  current.get("notice_mode", DEFAULT_NOTICE_MODE.value))

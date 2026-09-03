@@ -8,11 +8,14 @@ import customtkinter as ctk
 import keyboard
 
 from src.core.logs import setup_logger
+from src.core.notice import DEFAULT_NOTICE_MODE, MODE_LABELS, NoticeMode
 from src.core.persistence import load_settings, save_settings, save_welcome_preference, validate_range
 from src.core.runner import AutomationRunner
 
 ctk.set_appearance_mode("system")
 ctk.set_default_color_theme("blue")
+
+MODE_BY_LABEL = {label: mode for mode, label in MODE_LABELS.items()}
 
 
 class QueueLogHandler(logging.Handler):
@@ -46,10 +49,15 @@ class AutoFacturasApp(ctk.CTk):
         form = ctk.CTkFrame(self); form.grid(row=1, column=0, padx=28, pady=10, sticky="ew")
         for column in range(4): form.grid_columnconfigure(column, weight=1)
         for column, title in enumerate(("Caja", "Factura inicial", "Factura final", "Total")): ctk.CTkLabel(form, text=title).grid(row=0, column=column, padx=14, pady=(14, 4), sticky="w")
-        self.caja = ctk.CTkComboBox(form, values=["Hotel", "Restaurante", "Cafetería", "Albergue"]); self.caja.set("Hotel")
+        self.caja = ctk.CTkComboBox(form, values=["Hotel", "Restaurante", "Cafetería", "Albergue"], command=self._on_caja_changed); self.caja.set("Hotel")
         self.initial = ctk.CTkEntry(form, placeholder_text="260002"); self.final = ctk.CTkEntry(form, placeholder_text="260005")
         self.total = ctk.CTkLabel(form, text="—", font=ctk.CTkFont(size=18, weight="bold"))
         for column, widget in enumerate((self.caja, self.initial, self.final, self.total)): widget.grid(row=1, column=column, padx=14, pady=(0, 16), sticky="ew")
+        self.notice_mode_label = ctk.CTkLabel(form, text="Aviso de factura contabilizada")
+        self.notice_mode_label.grid(row=2, column=0, padx=14, pady=(0, 4), sticky="w")
+        self.notice_mode = ctk.CTkComboBox(form, values=list(MODE_BY_LABEL))
+        self.notice_mode.set(MODE_LABELS[DEFAULT_NOTICE_MODE])
+        self.notice_mode.grid(row=3, column=0, columnspan=2, padx=14, pady=(0, 16), sticky="ew")
         self.initial.bind("<KeyRelease>", self._update_total); self.final.bind("<KeyRelease>", self._update_total)
         buttons = ctk.CTkFrame(self, fg_color="transparent"); buttons.grid(row=2, column=0, padx=28, pady=8, sticky="ew")
         for column in range(4): buttons.grid_columnconfigure(column, weight=1)
@@ -91,9 +99,12 @@ class AutoFacturasApp(ctk.CTk):
     def _start(self) -> None:
         try:
             start, end = validate_range(self.initial.get(), self.final.get()); saved = load_settings()
-            save_settings(self.caja.get(), start, end, saved.get("show_welcome", True) if saved else True)
+            mode = MODE_BY_LABEL[self.notice_mode.get()]
+            save_settings(self.caja.get(), start, end,
+                          saved.get("show_welcome", True) if saved else True,
+                          notice_mode=mode)
         except ValueError as exc: messagebox.showerror("Rango no válido", str(exc), parent=self); return
-        if self.runner.start(self.caja.get(), start, end):
+        if self.runner.start(self.caja.get(), start, end, mode):
             self._set_running(True); self.progress.set(0); self.progress_label.configure(text=f"Factura actual: —  ·  Procesadas: 0 de {end-start+1}")
 
     def _pause(self) -> None:
@@ -120,18 +131,22 @@ class AutoFacturasApp(ctk.CTk):
     def _set_running(self, active: bool) -> None:
         state = "disabled" if active else "normal"
         for widget in (self.caja, self.initial, self.final, self.last_button, self.start_button): widget.configure(state=state)
+        if self.caja.get() in {"Hotel", "Albergue"}:
+            self.notice_mode.configure(state=state)
         self.pause_button.configure(state="normal" if active else "disabled", text="Pausar"); self.stop_button.configure(state="normal" if active else "disabled")
 
     def _load_last(self) -> None:
         saved = load_settings()
         if not saved: messagebox.showinfo("Última configuración", "No hay una configuración válida guardada.", parent=self); return
         self.caja.set(saved["caja"])
+        self.notice_mode.set(MODE_LABELS[NoticeMode(saved.get("notice_mode", DEFAULT_NOTICE_MODE.value))])
+        self._on_caja_changed(saved["caja"])
         for entry, value in ((self.initial, saved["inicial"]), (self.final, saved["final"])): entry.delete(0, "end"); entry.insert(0, str(value))
         self._update_total(); messagebox.showinfo("Última configuración", "Valores recuperados. Revísalos antes de iniciar; esto no reanuda una ejecución interrumpida.", parent=self)
 
     def show_guide(self) -> None:
         dialog = ctk.CTkToplevel(self); dialog.title("Guía de uso"); dialog.geometry("700x610"); dialog.minsize(600, 500); dialog.transient(self); dialog.grab_set(); dialog.grid_rowconfigure(0, weight=1); dialog.grid_columnconfigure(0, weight=1)
-        text = ("Antes de comenzar, abre el programa de facturación y déjalo correctamente preparado en su pantalla inicial habitual.\n\n1. Selecciona la caja.\n2. Introduce la factura inicial y final.\n3. Revisa el total.\n4. Pulsa «Iniciar».\n5. Usa los 5 segundos para seleccionar la ventana del programa de facturación.\n6. No escribas ni cambies de ventana durante la ejecución.\n7. Pulsa Ñ para pausar o continuar sin cambiar el foco.\n8. Usa «Detener» para cancelar definitivamente.\n9. «Última configuración» recupera los valores para revisarlos; no reanuda una ejecución y puede repetir facturas ya procesadas.\n\nEjemplo\nCaja: Hotel · Factura inicial: 260002 · Factura final: 260005.\nSe procesarán cuatro facturas: 260002, 260003, 260004 y 260005.\n\nEl progreso indica secuencias de teclado completadas, no facturas verificadas en el programa externo. Al pausar se conserva el paso y la espera pendientes, pero una tecla ya enviada no puede deshacerse.")
+        text = ("Antes de comenzar, abre el programa de facturación y déjalo correctamente preparado en su pantalla inicial habitual.\n\n1. Selecciona la caja.\n2. Para Hotel o Albergue, selecciona el modo del aviso: antiguas si se espera, modernas si no se espera, o detección automática para comprobar cada factura.\n3. Introduce la factura inicial y final.\n4. Revisa el total y pulsa «Iniciar».\n5. Usa los 5 segundos para seleccionar la ventana del programa de facturación.\n6. No escribas ni cambies de ventana durante la ejecución.\n7. Pulsa Ñ para pausar o continuar sin cambiar el foco.\n8. Usa «Detener» para cancelar definitivamente.\n9. «Última configuración» recupera los valores para revisarlos; no reanuda una ejecución y puede repetir facturas ya procesadas.\n\nLos modos nunca envían una confirmación adicional sin detectar primero el aviso. Una pantalla desconocida detiene la automatización.\n\nEjemplo\nCaja: Hotel · Factura inicial: 260002 · Factura final: 260005.\nSe procesarán cuatro facturas: 260002, 260003, 260004 y 260005.\n\nEl progreso indica secuencias de teclado completadas, no facturas verificadas en el programa externo. Al pausar se conserva el paso y la espera pendientes, pero una tecla ya enviada no puede deshacerse.")
         box = ctk.CTkTextbox(dialog, wrap="word"); box.insert("1.0", text); box.configure(state="disabled"); box.grid(row=0, column=0, padx=22, pady=(22, 10), sticky="nsew")
         hide = ctk.BooleanVar(value=False); ctk.CTkCheckBox(dialog, text="No mostrar al iniciar", variable=hide).grid(row=1, column=0, padx=22, pady=8, sticky="w")
         ctk.CTkButton(dialog, text="Entendido, comenzar", command=lambda: (save_welcome_preference(not hide.get()), dialog.destroy())).grid(row=2, column=0, padx=22, pady=(6, 20), sticky="e")
@@ -141,3 +156,13 @@ class AutoFacturasApp(ctk.CTk):
         self.runner.stop(); self.runner.join(3)
         if self.hotkey is not None: keyboard.unhook(self.hotkey)
         self.destroy()
+
+    def _on_caja_changed(self, caja: str) -> None:
+        if caja in {"Hotel", "Albergue"}:
+            self.notice_mode_label.grid()
+            self.notice_mode.grid()
+            if not self.runner.active:
+                self.notice_mode.configure(state="normal")
+        else:
+            self.notice_mode_label.grid_remove()
+            self.notice_mode.grid_remove()

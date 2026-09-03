@@ -8,6 +8,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from src.core.persistence import load_settings, save_settings, save_welcome_preference, validate_range
+from src.core.notice import DEFAULT_NOTICE_MODE, NoticeMode
 from src.core.runner import AutomationRunner, FLOWS
 from src.core.utils import AutomationStopped, ExecutionControl, pause
 
@@ -23,6 +24,7 @@ class PersistenceTests(unittest.TestCase):
             path = Path(folder) / "config.json"
             save_settings("Hotel", 260002, 260005, path=path)
             self.assertEqual(load_settings(path)["final"], 260005)
+            self.assertEqual(load_settings(path)["notice_mode"], DEFAULT_NOTICE_MODE.value)
             save_welcome_preference(False, path)
             self.assertFalse(load_settings(path)["show_welcome"])
 
@@ -34,6 +36,15 @@ class PersistenceTests(unittest.TestCase):
             self.assertIsNone(load_settings(path))
             path.write_text(json.dumps({"caja": "Otra", "inicial": 1, "final": 2}), encoding="utf-8")
             self.assertIsNone(load_settings(path))
+
+    def test_old_settings_without_notice_mode_are_compatible(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "config.json"
+            path.write_text(json.dumps({"version": 1, "caja": "Hotel", "inicial": 1,
+                                        "final": 2, "show_welcome": True}), encoding="utf-8")
+            self.assertEqual(load_settings(path)["notice_mode"], DEFAULT_NOTICE_MODE.value)
+            save_settings("Albergue", 1, 2, path=path, notice_mode=NoticeMode.OLD)
+            self.assertEqual(load_settings(path)["notice_mode"], NoticeMode.OLD.value)
 
 
 class ControlTests(unittest.TestCase):
@@ -69,6 +80,18 @@ class FlowSequenceTests(unittest.TestCase):
             with patch(f"{module}.write_text", side_effect=lambda text, *_: calls.append(("write", text))), patch(f"{module}.enter_times", side_effect=lambda count, *_: calls.append(("enter", count))), patch(f"{module}.press_key", side_effect=lambda key, *_: calls.append(("press", key))):
                 flow(7, logging.getLogger("test"), ExecutionControl())
             self.assertEqual(calls, self.EXPECTED[name])
+
+    def test_notice_check_is_inserted_between_initial_enters_and_f12(self):
+        for name in ("Hotel", "Albergue"):
+            flow = FLOWS[name]
+            calls = []
+            module = flow.__module__
+            with patch(f"{module}.write_text", side_effect=lambda text, *_: calls.append(("write", text))), \
+                    patch(f"{module}.enter_times", side_effect=lambda count, *_: calls.append(("enter", count))), \
+                    patch(f"{module}.press_key", side_effect=lambda key, *_: calls.append(("press", key))):
+                flow(7, logging.getLogger("test"), ExecutionControl(),
+                     lambda: calls.append(("notice", None)))
+            self.assertEqual(calls[2:4], [("notice", None), ("press", "f12")])
 
 
 class RunnerTests(unittest.TestCase):
