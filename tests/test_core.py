@@ -8,7 +8,6 @@ from pathlib import Path
 from unittest.mock import patch
 
 from src.core.persistence import load_settings, save_settings, save_welcome_preference, validate_range
-from src.core.notice import DEFAULT_NOTICE_MODE, NoticeMode
 from src.core.runner import AutomationRunner, FLOWS
 from src.core.utils import AutomationStopped, ExecutionControl, pause
 
@@ -24,7 +23,7 @@ class PersistenceTests(unittest.TestCase):
             path = Path(folder) / "config.json"
             save_settings("Hotel", 260002, 260005, path=path)
             self.assertEqual(load_settings(path)["final"], 260005)
-            self.assertEqual(load_settings(path)["notice_mode"], DEFAULT_NOTICE_MODE.value)
+            self.assertNotIn("notice_mode", load_settings(path))
             save_welcome_preference(False, path)
             self.assertFalse(load_settings(path)["show_welcome"])
 
@@ -42,9 +41,9 @@ class PersistenceTests(unittest.TestCase):
             path = Path(folder) / "config.json"
             path.write_text(json.dumps({"version": 1, "caja": "Hotel", "inicial": 1,
                                         "final": 2, "show_welcome": True}), encoding="utf-8")
-            self.assertEqual(load_settings(path)["notice_mode"], DEFAULT_NOTICE_MODE.value)
-            save_settings("Albergue", 1, 2, path=path, notice_mode=NoticeMode.OLD)
-            self.assertEqual(load_settings(path)["notice_mode"], NoticeMode.OLD.value)
+            self.assertNotIn("notice_mode", load_settings(path))
+            save_settings("Albergue", 1, 2, path=path)
+            self.assertNotIn("notice_mode", load_settings(path))
 
 
 class ControlTests(unittest.TestCase):
@@ -69,8 +68,8 @@ class ControlTests(unittest.TestCase):
 
 class FlowSequenceTests(unittest.TestCase):
     EXPECTED = {
-        "Hotel": [("write", "7"), ("enter", 4), ("press", "f12"), ("enter", 0), ("write", "FRA 7"), ("press", "enter")],
-        "Albergue": [("write", "7"), ("enter", 4), ("press", "f12"), ("enter", 0), ("write", "FRA 7"), ("press", "enter")],
+        "Hotel": [("write", "7"), ("enter", 5), ("press", "f12"), ("enter", 0), ("write", "FRA 7"), ("press", "enter")],
+        "Albergue": [("write", "7"), ("enter", 5), ("press", "f12"), ("enter", 0), ("write", "FRA 7"), ("press", "enter")],
         "Restaurante": [("enter", 3), ("write", "7"), ("press", "f12"), ("press", "enter"), ("write", "FRA 7"), ("press", "enter")],
         "Cafetería": [("enter", 3), ("write", "7"), ("press", "f12"), ("press", "enter"), ("write", "FRA 7"), ("press", "enter")],
     }

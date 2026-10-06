@@ -7,7 +7,6 @@ from collections.abc import Callable
 import pyautogui
 
 from src.core.utils import AutomationStopped, ExecutionControl, countdown
-from src.core.notice import DEFAULT_NOTICE_MODE, NoticeCoordinator, NoticeMode
 from src.flow.albergue import flujo_albergue
 from src.flow.cafeteria import flujo_cafeteria
 from src.flow.hotel import flujo_hotel
@@ -29,13 +28,12 @@ class AutomationRunner:
     def active(self) -> bool:
         return bool(self._thread and self._thread.is_alive())
 
-    def start(self, caja: str, initial: int, final: int,
-              notice_mode: NoticeMode = DEFAULT_NOTICE_MODE) -> bool:
+    def start(self, caja: str, initial: int, final: int) -> bool:
         with self._lock:
             if self.active:
                 return False
             self.control = ExecutionControl()
-            self._thread = threading.Thread(target=self._run, args=(caja, initial, final, notice_mode),
+            self._thread = threading.Thread(target=self._run, args=(caja, initial, final),
                                             name="auto-facturas", daemon=False)
             self._thread.start()
             return True
@@ -58,22 +56,17 @@ class AutomationRunner:
         if self._thread:
             self._thread.join(timeout)
 
-    def _run(self, caja: str, initial: int, final: int, notice_mode: NoticeMode) -> None:
+    def _run(self, caja: str, initial: int, final: int) -> None:
         completed, total = 0, final - initial + 1
         try:
             self.emit("state", state="cuenta atrás", message="Selecciona Fortune4 durante la cuenta atrás.")
             countdown(5, self.logger, self.control,
                       lambda value: self.emit("countdown", remaining=value))
             self.emit("state", state="ejecutando", message="Enviando la secuencia de pulsaciones.")
-            notice = NoticeCoordinator(self.logger)
             for number in range(initial, final + 1):
                 self.emit("progress", current=number, completed=completed, total=total)
                 self.logger.info("%s | FACTURA %d | INICIO", caja.upper(), number)
-                if caja in {"Hotel", "Albergue"}:
-                    FLOWS[caja](number, self.logger, self.control,
-                                lambda: notice.handle(caja, number, notice_mode, self.control))
-                else:
-                    FLOWS[caja](number, self.logger, self.control)
+                FLOWS[caja](number, self.logger, self.control)
                 completed += 1
                 self.logger.info("%s | FACTURA %d | FIN", caja.upper(), number)
                 self.emit("progress", current=number, completed=completed, total=total)

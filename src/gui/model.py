@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
-from src.core.notice import MODE_LABELS, NoticeMode
 from src.core.persistence import VALID_CAJAS, validate_range
 
 
@@ -30,14 +29,14 @@ class StatePolicy:
 
 
 STATE_POLICIES = {
-    AppState.READY: StatePolicy("Preparado", "#2E7D5B", True, True, False, False),
-    AppState.COUNTDOWN: StatePolicy("Cuenta atrás", "#B7791F", False, False, True, True),
-    AppState.RUNNING: StatePolicy("Ejecutando", "#2563A6", False, False, True, True),
-    AppState.PAUSED: StatePolicy("En pausa", "#B7791F", False, False, True, True, "Continuar"),
-    AppState.STOPPING: StatePolicy("Deteniendo", "#6B7280", False, False, False, False),
-    AppState.STOPPED: StatePolicy("Detenido", "#6B7280", True, True, False, False),
-    AppState.COMPLETED: StatePolicy("Completado", "#2E7D5B", True, True, False, False),
-    AppState.ERROR: StatePolicy("Revisar", "#B83232", True, True, False, False),
+    AppState.READY: StatePolicy("Preparado", "#596744", True, True, False, False),
+    AppState.COUNTDOWN: StatePolicy("Cuenta atrás", "#94631F", False, False, True, True),
+    AppState.RUNNING: StatePolicy("Ejecutando", "#795438", False, False, True, True),
+    AppState.PAUSED: StatePolicy("En pausa", "#94631F", False, False, True, True, "Continuar"),
+    AppState.STOPPING: StatePolicy("Deteniendo", "#756957", False, False, False, False),
+    AppState.STOPPED: StatePolicy("Detenido", "#756957", True, True, False, False),
+    AppState.COMPLETED: StatePolicy("Completado", "#596744", True, True, False, False),
+    AppState.ERROR: StatePolicy("Revisar", "#A44636", True, True, False, False),
 }
 
 
@@ -56,7 +55,7 @@ def calculate_total(initial: str, final: str) -> int | None:
 
 
 def validate_form(caja: str, initial: str, final: str,
-                  mode_label: str, *, active: bool = False) -> tuple[int, int, NoticeMode]:
+                  *, active: bool = False) -> tuple[int, int]:
     if active:
         raise FormValidationError("general", "Ya hay un proceso en marcha. Deténlo antes de iniciar otro.")
     if caja not in VALID_CAJAS:
@@ -79,20 +78,9 @@ def validate_form(caja: str, initial: str, final: str,
         raise FormValidationError("final", "La última factura no puede ser negativa.")
     if end < start:
         raise FormValidationError("final", "La última factura debe ser igual o posterior a la primera.")
-    mode_by_label = {label: mode for mode, label in MODE_LABELS.items()}
-    if caja in {"Hotel", "Albergue"} and mode_label not in mode_by_label:
-        raise FormValidationError("mode", "Selecciona cómo debe comprobarse el aviso.")
-    return start, end, mode_by_label.get(mode_label, NoticeMode.MODERN)
+    return start, end
 
 
-def repeats_last_settings(saved: dict | None, caja: str, initial: int, final: int,
-                          mode: NoticeMode) -> bool:
-    if not saved:
-        return False
-    if saved.get("caja") != caja or saved.get("inicial") != initial or saved.get("final") != final:
-        return False
-    return caja not in {"Hotel", "Albergue"} or saved.get("notice_mode") == mode.value
-
-
-def shows_notice_mode(caja: str) -> bool:
-    return caja in {"Hotel", "Albergue"}
+def repeats_last_settings(saved: dict | None, caja: str, initial: int, final: int) -> bool:
+    return bool(saved and saved.get("caja") == caja
+                and saved.get("inicial") == initial and saved.get("final") == final)

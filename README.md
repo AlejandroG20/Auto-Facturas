@@ -26,7 +26,7 @@ Solo es necesario hacerlo la primera vez. Si falta algún componente, el lanzado
 
 ### Cómo abrirlo
 
-La forma más sencilla es hacer doble clic en `iniciar.bat`. El lanzador funciona aunque la carpeta del proyecto contenga espacios.
+La forma más sencilla es hacer doble clic en `Auto-Facturas.bat`. El lanzador funciona aunque la carpeta del proyecto contenga espacios.
 
 También puedes abrirlo desde PowerShell:
 
@@ -41,7 +41,6 @@ También puedes abrirlo desde PowerShell:
 3. Escribe la primera factura.
 4. Escribe la última factura.
 5. Revisa el total. La primera y la última también están incluidas.
-6. En Hotel o Albergue, selecciona el tipo de facturas.
 7. Pulsa **Iniciar**.
 8. Durante la cuenta atrás de cinco segundos, selecciona Fortune4.
 9. No toques el teclado ni cambies de ventana durante el proceso.
@@ -66,14 +65,9 @@ Se procesarán `260002`, `260003`, `260004` y `260005`. Ambos extremos están in
 
 La pausa conserva el punto exacto del proceso. Una pulsación que ya se envió no puede deshacerse.
 
-### Aviso de factura contabilizada
+### Flujo de Hotel y Albergue
 
-Hotel y Albergue ofrecen dos opciones que seleccionas a mano:
-
-- **Facturas antiguas**: envía un Enter para aceptar el aviso de factura contabilizada antes de F12.
-- **Facturas modernas**: continúa sin ese Enter adicional.
-
-El programa no detecta ventanas ni comprueba si aparece el aviso. Elige el tipo correcto para el rango; si contiene ambos tipos, procésalos por separado. La opción inicial es modernas. Las configuraciones guardadas con detección automática se recuperan como modernas: revisa la selección antes de iniciar.
+Hotel y Albergue utilizan un flujo único: número de factura, cinco Enter, F12, referencia FRA y Enter final. No hay que seleccionar tipos de facturas.
 
 ### Recuperar la última configuración
 
@@ -112,7 +106,6 @@ src/gui/model.py            Estados y validaciones de la interfaz
 src/core/runner.py          Ejecución en segundo plano
 src/core/utils.py           Pausas, parada y acciones seguras
 src/core/persistence.py     Configuración local
-src/core/notice.py          Coordinación del aviso contabilizado
 src/flow/                   Secuencias independientes por caja
 tests/                      Pruebas simuladas
 ```
