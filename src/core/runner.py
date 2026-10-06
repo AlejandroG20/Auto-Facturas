@@ -7,9 +7,7 @@ from collections.abc import Callable
 import pyautogui
 
 from src.core.utils import AutomationStopped, ExecutionControl, countdown
-from src.core.notice import (DEFAULT_NOTICE_MODE, NoticeCoordinator,
-                             NoticeDidNotCloseError, NoticeMode, UnknownScreenError)
-from src.core.window_detection import Win32WindowDetector
+from src.core.notice import DEFAULT_NOTICE_MODE, NoticeCoordinator, NoticeMode
 from src.flow.albergue import flujo_albergue
 from src.flow.cafeteria import flujo_cafeteria
 from src.flow.hotel import flujo_hotel
@@ -67,7 +65,7 @@ class AutomationRunner:
             countdown(5, self.logger, self.control,
                       lambda value: self.emit("countdown", remaining=value))
             self.emit("state", state="ejecutando", message="Enviando la secuencia de pulsaciones.")
-            notice = NoticeCoordinator(Win32WindowDetector(), self.logger)
+            notice = NoticeCoordinator(self.logger)
             for number in range(initial, final + 1):
                 self.emit("progress", current=number, completed=completed, total=total)
                 self.logger.info("%s | FACTURA %d | INICIO", caja.upper(), number)
@@ -88,12 +86,5 @@ class AutomationRunner:
             self.emit("finished", state="detenido", message="Parada de seguridad activada. No se enviarán más pulsaciones.")
         except Exception as exc:
             self.logger.exception("ERROR INESPERADO")
-            if isinstance(exc, UnknownScreenError):
-                message = ("El programa ha encontrado una ventana que no reconoce y se ha detenido "
-                           "para evitar errores. Revisa Fortune4 antes de volver a intentarlo.")
-            elif isinstance(exc, NoticeDidNotCloseError):
-                message = ("El aviso de factura contabilizada no se cerró. El proceso se ha detenido "
-                           "para evitar más pulsaciones.")
-            else:
-                message = "El proceso se ha detenido por un problema inesperado. Revisa el registro antes de volver a intentarlo."
+            message = "El proceso se ha detenido por un problema inesperado. Revisa el registro antes de volver a intentarlo."
             self.emit("finished", state="error", message=message)

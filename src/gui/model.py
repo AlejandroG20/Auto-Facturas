@@ -82,7 +82,7 @@ def validate_form(caja: str, initial: str, final: str,
     mode_by_label = {label: mode for mode, label in MODE_LABELS.items()}
     if caja in {"Hotel", "Albergue"} and mode_label not in mode_by_label:
         raise FormValidationError("mode", "Selecciona cómo debe comprobarse el aviso.")
-    return start, end, mode_by_label.get(mode_label, NoticeMode.AUTO)
+    return start, end, mode_by_label.get(mode_label, NoticeMode.MODERN)
 
 
 def repeats_last_settings(saved: dict | None, caja: str, initial: int, final: int,

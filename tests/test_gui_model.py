@@ -18,11 +18,11 @@ class GuiModelTests(unittest.TestCase):
 
     def test_form_validation_returns_clear_field_errors(self):
         cases = (
-            (("Hotel", "", "2", MODE_LABELS[NoticeMode.AUTO]), "initial"),
-            (("Hotel", "x", "2", MODE_LABELS[NoticeMode.AUTO]), "initial"),
-            (("Hotel", "1", "", MODE_LABELS[NoticeMode.AUTO]), "final"),
-            (("Hotel", "3", "2", MODE_LABELS[NoticeMode.AUTO]), "final"),
-            (("Otra", "1", "2", MODE_LABELS[NoticeMode.AUTO]), "caja"),
+            (("Hotel", "", "2", MODE_LABELS[NoticeMode.MODERN]), "initial"),
+            (("Hotel", "x", "2", MODE_LABELS[NoticeMode.MODERN]), "initial"),
+            (("Hotel", "1", "", MODE_LABELS[NoticeMode.MODERN]), "final"),
+            (("Hotel", "3", "2", MODE_LABELS[NoticeMode.MODERN]), "final"),
+            (("Otra", "1", "2", MODE_LABELS[NoticeMode.MODERN]), "caja"),
             (("Hotel", "1", "2", ""), "mode"),
         )
         for arguments, field in cases:
@@ -33,7 +33,7 @@ class GuiModelTests(unittest.TestCase):
 
     def test_active_process_cannot_start_again(self):
         with self.assertRaises(FormValidationError) as raised:
-            validate_form("Hotel", "1", "2", MODE_LABELS[NoticeMode.AUTO], active=True)
+            validate_form("Hotel", "1", "2", MODE_LABELS[NoticeMode.MODERN], active=True)
         self.assertEqual(raised.exception.field, "general")
 
     def test_notice_mode_visibility_depends_on_caja(self):
@@ -54,9 +54,9 @@ class GuiModelTests(unittest.TestCase):
 
     def test_repeat_warning_only_matches_exact_configuration(self):
         saved = {"caja": "Hotel", "inicial": 1, "final": 3,
-                 "notice_mode": NoticeMode.AUTO.value}
-        self.assertTrue(repeats_last_settings(saved, "Hotel", 1, 3, NoticeMode.AUTO))
-        self.assertFalse(repeats_last_settings(saved, "Hotel", 1, 4, NoticeMode.AUTO))
+                 "notice_mode": NoticeMode.MODERN.value}
+        self.assertTrue(repeats_last_settings(saved, "Hotel", 1, 3, NoticeMode.MODERN))
+        self.assertFalse(repeats_last_settings(saved, "Hotel", 1, 4, NoticeMode.MODERN))
         self.assertFalse(repeats_last_settings(saved, "Hotel", 1, 3, NoticeMode.OLD))
 
     def test_worker_logs_are_queued_with_their_level(self):

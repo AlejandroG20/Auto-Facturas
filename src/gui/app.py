@@ -19,9 +19,8 @@ ctk.set_appearance_mode("system")
 ctk.set_default_color_theme("blue")
 MODE_BY_LABEL = {label: mode for mode, label in MODE_LABELS.items()}
 HELP_TEXTS = {
-    NoticeMode.OLD: "Normalmente muestran el aviso de factura contabilizada.",
-    NoticeMode.MODERN: "Normalmente no muestran el aviso.",
-    NoticeMode.AUTO: "Comprueba cada factura y decide si debe aceptar el aviso.",
+    NoticeMode.OLD: "Env?a un Enter para aceptar el aviso de factura contabilizada.",
+    NoticeMode.MODERN: "Continúa sin enviar un Enter para aceptar el aviso.",
 }
 
 

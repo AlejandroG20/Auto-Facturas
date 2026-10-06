@@ -68,13 +68,12 @@ La pausa conserva el punto exacto del proceso. Una pulsación que ya se envió n
 
 ### Aviso de factura contabilizada
 
-Hotel y Albergue ofrecen tres opciones:
+Hotel y Albergue ofrecen dos opciones que seleccionas a mano:
 
-- **Facturas antiguas**: normalmente muestran el aviso.
-- **Facturas modernas**: normalmente no muestran el aviso.
-- **Detección automática**: comprueba cada factura y decide qué hacer.
+- **Facturas antiguas**: envía un Enter para aceptar el aviso de factura contabilizada antes de F12.
+- **Facturas modernas**: continúa sin ese Enter adicional.
 
-Estas opciones nunca envían una confirmación a ciegas. El programa comprueba el aviso antes de aceptarlo y confirma que desapareció. Si encuentra una ventana que no reconoce, se detiene para evitar errores.
+El programa no detecta ventanas ni comprueba si aparece el aviso. Elige el tipo correcto para el rango; si contiene ambos tipos, procésalos por separado. La opción inicial es modernas. Las configuraciones guardadas con detección automática se recuperan como modernas: revisa la selección antes de iniciar.
 
 ### Recuperar la última configuración
 
@@ -93,10 +92,6 @@ Cierra primero la guía de bienvenida o espera a que termine el proceso actual.
 **El total muestra una raya**
 
 Comprueba que ambos campos contienen números y que la última factura no es menor que la primera.
-
-**El programa se detuvo porque no reconoce una ventana**
-
-Revisa qué muestra Fortune4, vuelve a su pantalla habitual e inicia de nuevo cuando sea seguro.
 
 **El lanzador indica que faltan componentes**
 
@@ -118,7 +113,6 @@ src/core/runner.py          Ejecución en segundo plano
 src/core/utils.py           Pausas, parada y acciones seguras
 src/core/persistence.py     Configuración local
 src/core/notice.py          Coordinación del aviso contabilizado
-src/core/window_detection.py Detección de ventanas Win32
 src/flow/                   Secuencias independientes por caja
 tests/                      Pruebas simuladas
 ```
@@ -147,16 +141,10 @@ Los datos se guardan fuera del repositorio:
 
 El botón **Limpiar pantalla** vacía únicamente el panel visible. Nunca borra el archivo de log. Las configuraciones antiguas que no contienen el modo del aviso siguen siendo compatibles.
 
-### Detección del aviso
-
-La ventana activa y sus controles se leen mediante Win32, sin coordenadas fijas. La comparación tolera mayúsculas, acentos, espacios duplicados y saltos de línea, pero rechaza mensajes diferentes.
-
-Si Fortune4 no expone el texto en el PC del hotel, hará falta incorporar una plantilla visual pequeña a partir de la captura original. No debe compararse la pantalla completa.
-
 ### Crear el ejecutable
 
 ```powershell
 .\.venv\Scripts\pyinstaller.exe --clean Auto-Facturas.spec
 ```
 
-El resultado queda en `dist\Auto-Facturas.exe`. Debe validarse en el ordenador del hotel con Fortune4 disponible, sin utilizar facturas reales, comprobando escalado, permisos de la tecla global, parada de seguridad y detección del aviso.
+El resultado queda en `dist\Auto-Facturas.exe`. Debe validarse en el ordenador del hotel con Fortune4 disponible, sin utilizar facturas reales, comprobando escalado, permisos de la tecla global, parada de seguridad y los dos tipos de facturas.
