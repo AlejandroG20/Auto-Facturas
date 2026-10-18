@@ -41,6 +41,7 @@ También puedes abrirlo desde PowerShell:
 3. Escribe la primera factura.
 4. Escribe la última factura.
 5. Revisa el total. La primera y la última también están incluidas.
+6. En Hotel y Albergue, rellena **Año (dos cifras)**, por ejemplo `19`, `20` o `21`. Es obligatorio y se aplica a todo el rango.
 7. Pulsa **Iniciar**.
 8. Durante la cuenta atrás de cinco segundos, selecciona Fortune4.
 9. No toques el teclado ni cambies de ventana durante el proceso.
@@ -67,11 +68,11 @@ La pausa conserva el punto exacto del proceso. Una pulsación que ya se envió n
 
 ### Flujo de Hotel y Albergue
 
-Hotel y Albergue utilizan un flujo único: número de factura, cinco Enter, F12, referencia FRA y Enter final. No hay que seleccionar tipos de facturas.
+Hotel y Albergue requieren el campo **Año (dos cifras)** antes de iniciar. La secuencia es: número de factura, un Enter, año, tres Enter y F12. Hotel escribe directamente la referencia FRA; Albergue pulsa un Enter antes de escribirla. Ambos terminan con Enter. Restaurante y Cafetería no requieren año.
 
 ### Recuperar la última configuración
 
-**Recuperar última configuración** rellena la caja, el rango y las opciones usadas anteriormente. No inicia ni reanuda el proceso. Si intentas iniciar exactamente el mismo rango, la aplicación te avisará porque podrían repetirse facturas.
+**Recuperar última configuración** rellena la caja y el rango. El año debe introducirse de nuevo en Hotel y Albergue. No inicia ni reanuda el proceso. Si intentas iniciar exactamente el mismo rango, la aplicación te avisará porque podrían repetirse facturas.
 
 ### Guía de uso
 
@@ -137,7 +138,9 @@ El botón **Limpiar pantalla** vacía únicamente el panel visible. Nunca borra 
 ### Crear el ejecutable
 
 ```powershell
-.\.venv\Scripts\pyinstaller.exe --clean Auto-Facturas.spec
+.\.venv\Scripts\python.exe -m PyInstaller --clean --noconfirm Auto-Facturas.spec
 ```
 
-El resultado queda en `dist\Auto-Facturas.exe`. Debe validarse en el ordenador del hotel con Fortune4 disponible, sin utilizar facturas reales, comprobando escalado, permisos de la tecla global, parada de seguridad y los dos tipos de facturas.
+El resultado queda en `dist\Auto-Facturas.exe`. Debe validarse en el ordenador del hotel con Fortune4 disponible, sin utilizar facturas reales, comprobando escalado, permisos de la tecla global, parada de seguridad y la escritura del año en Hotel y Albergue.
+
+Para actualizar el EXE, cierra la versión anterior, ejecuta el comando de creación y abre `dist\Auto-Facturas.exe`. El título de la nueva ventana indica "Año y pausa F10".

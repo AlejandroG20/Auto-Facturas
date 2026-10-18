@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import queue
 from pathlib import Path
-from tkinter import messagebox, simpledialog
+from tkinter import messagebox
 
 import customtkinter as ctk
 import keyboard
@@ -60,7 +60,7 @@ class QueueLogHandler(logging.Handler):
 class AutoFacturasApp(ctk.CTk):
     def __init__(self) -> None:
         super().__init__()
-        self.title("Auto-Facturas")
+        self.title("Auto-Facturas | Año y pausa F10")
         icon_path = Path(__file__).resolve().parents[2] / "assets" / "auto-facturas.ico"
         if icon_path.is_file():
             self.iconbitmap(str(icon_path))
@@ -115,7 +115,7 @@ class AutoFacturasApp(ctk.CTk):
         ctk.CTkLabel(frame, text="Elige las facturas", font=ctk.CTkFont(size=18, weight="bold")).grid(row=0, column=0, columnspan=4, padx=18, pady=(16, 10), sticky="w")
         for column, text in enumerate(("Caja / establecimiento", "Primera factura", "Última factura", "Facturas en total")):
             ctk.CTkLabel(frame, text=text, font=ctk.CTkFont(weight="bold")).grid(row=1, column=column, padx=14, sticky="w")
-        self.caja = ctk.CTkComboBox(frame, height=40, state="readonly", values=["Hotel", "Restaurante", "Cafetería", "Albergue"])
+        self.caja = ctk.CTkComboBox(frame, height=40, state="readonly", values=["Hotel", "Restaurante", "Cafetería", "Albergue"], command=self._update_year_state)
         self.caja.set("Hotel")
         self.initial = ctk.CTkEntry(frame, height=40, placeholder_text="Ejemplo: 260002")
         self.final = ctk.CTkEntry(frame, height=40, placeholder_text="Ejemplo: 260005")
@@ -126,6 +126,11 @@ class AutoFacturasApp(ctk.CTk):
         self.initial_error = self._hint(frame, 1, "Primera factura que se procesará.")
         self.final_error = self._hint(frame, 2, "Última factura que se procesará. También está incluida.")
         self.total_hint = self._hint(frame, 3, "Se cuentan la primera y la última.")
+        ctk.CTkLabel(frame, text="Año (dos cifras)", font=ctk.CTkFont(weight="bold")).grid(row=4, column=0, padx=14, pady=(5, 0), sticky="w")
+        self.ano = ctk.CTkEntry(frame, height=40, placeholder_text="19, 20, 21...")
+        self.ano.grid(row=5, column=0, padx=14, pady=(0, 14), sticky="ew")
+        self.ano_hint = ctk.CTkLabel(frame, text="Obligatorio en Hotel y Albergue. Se aplica a todo el rango.", text_color=MUTED, wraplength=180, justify="left")
+        self.ano_hint.grid(row=5, column=1, padx=14, pady=(0, 14), sticky="w")
         self.last_button = ctk.CTkButton(frame, text="Recuperar última configuración", command=self._load_last, **SECONDARY_BUTTON)
         self.last_button.grid(row=4, column=2, columnspan=2, padx=14, pady=(5, 2), sticky="ew")
         ctk.CTkLabel(frame, text="Rellena los datos anteriores. Revisa el rango antes de iniciar.", anchor="w", justify="left", wraplength=380, text_color=("#6C6052", "#C9BFAF")).grid(row=5, column=2, columnspan=2, padx=14, pady=(0, 14), sticky="w")
@@ -133,6 +138,11 @@ class AutoFacturasApp(ctk.CTk):
         self.general_error.grid(row=6, column=0, columnspan=4, padx=14, pady=(0, 6), sticky="ew")
         self.initial.bind("<KeyRelease>", self._update_total)
         self.final.bind("<KeyRelease>", self._update_total)
+
+    def _update_year_state(self, _value=None) -> None:
+        required = self.caja.get() in ("Hotel", "Albergue")
+        self.ano.configure(state="normal" if required and not self.runner.active else "disabled")
+        self.ano_hint.configure(text="Obligatorio en Hotel y Albergue. Se aplica a todo el rango." if required else "Esta caja no utiliza el año.")
 
     @staticmethod
     def _hint(parent, column: int, text: str):
@@ -150,7 +160,7 @@ class AutoFacturasApp(ctk.CTk):
         self.stop_button = ctk.CTkButton(frame, text="Detener", height=46, command=self._stop, fg_color="#A44636", hover_color="#853529")
         for column, button in enumerate((self.start_button, self.pause_button, self.stop_button)):
             button.grid(row=0, column=column, padx=6, sticky="ew")
-        ctk.CTkLabel(frame, text="Al iniciar tienes 5 segundos para volver a Fortune4. Durante el proceso, no escribas ni cambies de ventana.",
+        ctk.CTkLabel(frame, text="Al iniciar tienes 5 segundos para volver a Fortune4. F10 pausa y reanuda. Durante el proceso, no escribas ni cambies de ventana.",
                      anchor="w", justify="left", wraplength=850, text_color=("#6C6052", "#C9BFAF")).grid(row=1, column=0, columnspan=3, padx=6, pady=(8, 0), sticky="ew")
 
     def _build_progress(self) -> None:
@@ -245,15 +255,12 @@ class AutoFacturasApp(ctk.CTk):
             return
         ano = None
         if self.caja.get() in ("Hotel", "Albergue"):
-            while True:
-                ano = simpledialog.askstring("Año de las facturas",
-                                             "Introduce el año con dos cifras (19, 20, 21, etc.):", parent=self)
-                if ano is None:
-                    return
-                ano = ano.strip()
-                if len(ano) == 2 and ano.isascii() and ano.isdigit():
-                    break
-                messagebox.showerror("Año no válido", "Escribe exactamente dos cifras, por ejemplo: 21.", parent=self)
+            ano = self.ano.get().strip()
+            if len(ano) != 2 or not ano.isascii() or not ano.isdigit():
+                self.general_error.configure(text="Introduce el año con dos cifras: 19, 20, 21, etc.")
+                self.ano.focus_set()
+                self._apply_state(AppState.ERROR, "Revisa el año antes de iniciar.")
+                return
         try:
             save_settings(self.caja.get(), start, end,
                           saved.get("show_welcome", True) if saved else True)
@@ -321,6 +328,7 @@ class AutoFacturasApp(ctk.CTk):
         field_state = "normal" if policy.editable else "disabled"
         for widget in (self.caja, self.initial, self.final, self.last_button):
             widget.configure(state=("readonly" if policy.editable else "disabled") if widget is self.caja else field_state)
+        self.ano.configure(state="normal" if policy.editable and self.caja.get() in ("Hotel", "Albergue") else "disabled")
         self.start_button.configure(state="normal" if policy.can_start and not self.guide_required else "disabled")
         self.pause_button.configure(state="normal" if policy.can_pause else "disabled", text=policy.pause_text)
         self.stop_button.configure(state="normal" if policy.can_stop else "disabled")
@@ -332,6 +340,8 @@ class AutoFacturasApp(ctk.CTk):
             messagebox.showinfo("Última configuración", "Todavía no hay una configuración guardada.", parent=self)
             return
         self.caja.set(saved["caja"])
+        self.ano.delete(0, "end")
+        self._update_year_state()
         for entry, value in ((self.initial, saved["inicial"]), (self.final, saved["final"])):
             entry.delete(0, "end")
             entry.insert(0, str(value))
@@ -356,11 +366,11 @@ class AutoFacturasApp(ctk.CTk):
             ("Antes de empezar", "Auto-Facturas escribe y pulsa teclas en la ventana que tengas seleccionada. Abre Fortune4, elige la caja correcta y deja preparada la pantalla desde la que sueles comenzar a introducir la factura. Si no sabes cuál es, consulta a quien realiza este trabajo habitualmente antes de iniciar."),
             ("1 - Elige la caja y el rango", "En la ventana principal, selecciona Hotel, Restaurante, Cafetería o Albergue. Escribe el número de la primera y de la última factura: se procesarán todos los números consecutivos, incluidos los dos extremos. Para una sola factura, escribe el mismo número en ambos campos."),
             ("Ejemplo - Cuatro facturas", "Primera factura: 260002    Última factura: 260005    Total: 4\nSe procesarán 260002, 260003, 260004 y 260005. Comprueba que el total coincide con lo que quieres hacer."),
-            ("2 - Inicia y vuelve a Fortune4", "Pulsa Iniciar proceso. Tendrás 5 segundos para hacer clic en Fortune4 y dejar activa la pantalla preparada. Las teclas se enviarán a esa ventana. Durante el proceso no escribas, no hagas clic en otros programas ni cambies de ventana."),
+            ("2 - Inicia y vuelve a Fortune4", "En Hotel y Albergue, rellena antes el campo Año con dos cifras (19, 20, 21...). Es obligatorio y se aplica a todas las facturas del rango. Después pulsa Iniciar proceso. Tendrás 5 segundos para hacer clic en Fortune4 y dejar activa la pantalla preparada. Las teclas se enviarán a esa ventana. Durante el proceso no escribas, no hagas clic en otros programas ni cambies de ventana."),
             ("Pausar y continuar", "Pulsa F10 para pausar desde Fortune4, o usa el botón Pausar. La pausa conserva el punto del proceso. Para seguir, pulsa Continuar y vuelve a Fortune4 durante los 5 segundos de cuenta atrás. F10 también reanuda, pero lo hace inmediatamente: úsalo solo cuando Fortune4 ya está activo."),
             ("Detener o resolver un problema", "Detener cancela el proceso; las pulsaciones ya enviadas no se deshacen. Como parada de emergencia, mueve el ratón a la esquina superior izquierda de la pantalla. Si algo no coincide en Fortune4, pausa o detén y revisa la última factura antes de volver a iniciar. No repitas todo el rango sin comprobar lo que ya se hizo."),
             ("3 - Revisa el resultado", "El contador indica las secuencias de teclas terminadas. Al finalizar, comprueba en Fortune4 que las facturas y referencias son correctas: Auto-Facturas no verifica el resultado contable. El detalle del proceso te ayuda a consultar por qué factura iba."),
-            ("Recuperar los datos de la última vez", "Recuperar Última configuración rellena los campos, pero no inicia el proceso. Revisa la caja y el rango. Si coinciden con la última ejecución, aparecerá un aviso para evitar una repetición accidental."),
+            ("Recuperar los datos de la última vez", "Recuperar Última configuración rellena los campos, pero no inicia el proceso. Revisa la caja y el rango y escribe de nuevo el año en Hotel o Albergue. Si coinciden con la última ejecución, aparecerá un aviso para evitar una repetición accidental."),
         )
         content = ctk.CTkScrollableFrame(dialog, fg_color=("#F3EEE6", "#211E19"), corner_radius=CORNER_RADIUS)
         content.grid(row=1, column=0, padx=24, pady=8, sticky="nsew")

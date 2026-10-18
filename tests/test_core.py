@@ -68,37 +68,45 @@ class ControlTests(unittest.TestCase):
 
 class FlowSequenceTests(unittest.TestCase):
     EXPECTED = {
-        "Hotel": [("write", "7"), ("enter", 5), ("press", "f12"), ("enter", 0), ("write", "FRA 7"), ("press", "enter")],
-        "Albergue": [("write", "7"), ("enter", 5), ("press", "f12"), ("enter", 0), ("write", "FRA 7"), ("press", "enter")],
+        "Hotel": [("write", "7"), ("enter", 1), ("write", "21"), ("enter", 3), ("press", "f12"), ("enter", 0), ("write", "FRA 7"), ("press", "enter")],
+        "Albergue": [("write", "7"), ("enter", 1), ("write", "21"), ("enter", 3), ("press", "f12"), ("enter", 1), ("write", "FRA 7"), ("press", "enter")],
         "Restaurante": [("enter", 3), ("write", "7"), ("press", "f12"), ("press", "enter"), ("write", "FRA 7"), ("press", "enter")],
-        "Cafetería": [("enter", 3), ("write", "7"), ("press", "f12"), ("press", "enter"), ("write", "FRA 7"), ("press", "enter")],
+        "Cafetería": [("enter", 2), ("write", "C"), ("write", "7"), ("press", "f12"), ("press", "enter"), ("write", "FRA 7"), ("press", "enter")],
     }
     def test_sequences_are_preserved(self):
         for name, flow in FLOWS.items():
             calls = []; module = flow.__module__
             with patch(f"{module}.write_text", side_effect=lambda text, *_: calls.append(("write", text))), patch(f"{module}.enter_times", side_effect=lambda count, *_: calls.append(("enter", count))), patch(f"{module}.press_key", side_effect=lambda key, *_: calls.append(("press", key))):
-                flow(7, logging.getLogger("test"), ExecutionControl())
+                flow(7, logging.getLogger("test"), ExecutionControl(), **({"ano": "21"} if name in ("Hotel", "Albergue") else {}))
             self.assertEqual(calls, self.EXPECTED[name])
 
-    def test_notice_check_is_inserted_between_initial_enters_and_f12(self):
+    def test_invalid_year_sends_no_keys(self):
         for name in ("Hotel", "Albergue"):
             flow = FLOWS[name]
-            calls = []
-            module = flow.__module__
-            with patch(f"{module}.write_text", side_effect=lambda text, *_: calls.append(("write", text))), \
-                    patch(f"{module}.enter_times", side_effect=lambda count, *_: calls.append(("enter", count))), \
-                    patch(f"{module}.press_key", side_effect=lambda key, *_: calls.append(("press", key))):
-                flow(7, logging.getLogger("test"), ExecutionControl(),
-                     lambda: calls.append(("notice", None)))
-            self.assertEqual(calls[2:4], [("notice", None), ("press", "f12")])
+            for ano in ("", "2021", "x1", "２１"):
+                with self.subTest(caja=name, ano=ano), patch(f"{flow.__module__}.write_text") as write:
+                    with self.assertRaises(ValueError):
+                        flow(7, logging.getLogger("test"), ExecutionControl(), ano=ano)
+                    write.assert_not_called()
 
 
 class RunnerTests(unittest.TestCase):
+    def test_year_is_forwarded_to_every_invoice(self):
+        for name in ("Hotel", "Albergue"):
+            runner = AutomationRunner(lambda *a, **k: None, logging.getLogger("test"))
+            with patch("src.core.runner.countdown"), patch.dict(FLOWS) as flows:
+                from unittest.mock import Mock
+                flow = Mock()
+                flows[name] = flow
+                runner._run(name, 7, 9, "19")
+                self.assertEqual(flow.call_count, 3)
+                self.assertEqual([call.kwargs for call in flow.call_args_list], [{"ano": "19"}] * 3)
+
     def test_prevents_simultaneous_runs_and_stops_countdown(self):
         events = []; logger = logging.getLogger("runner-test")
         runner = AutomationRunner(lambda kind, **data: events.append((kind, data)), logger)
         with patch("src.core.runner.countdown", side_effect=lambda _s, _l, ctl, _cb: ctl.stop_event.wait(.3) and (_ for _ in ()).throw(AutomationStopped())):
-            self.assertTrue(runner.start("Hotel", 1, 1)); self.assertFalse(runner.start("Hotel", 1, 1))
+            self.assertTrue(runner.start("Hotel", 1, 1, ano="21")); self.assertFalse(runner.start("Hotel", 1, 1, ano="21"))
             runner.stop(); runner.join(1)
         self.assertTrue(any(data.get("state") == "detenido" for _, data in events))
 

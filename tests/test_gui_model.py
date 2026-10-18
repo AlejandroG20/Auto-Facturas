@@ -1,8 +1,9 @@
 import logging
 import queue
 import unittest
+from unittest.mock import Mock, patch
 
-from src.gui.app import QueueLogHandler
+from src.gui.app import AutoFacturasApp, QueueLogHandler
 from src.gui.model import (AppState, FormValidationError, STATE_POLICIES,
                            calculate_total, repeats_last_settings,
                            validate_form)
@@ -63,3 +64,37 @@ class GuiModelTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class YearFormTests(unittest.TestCase):
+    def make_form(self, caja, ano):
+        app = Mock()
+        app.caja.get.return_value = caja
+        app.initial.get.return_value = "7"
+        app.final.get.return_value = "9"
+        app.ano.get.return_value = ano
+        app.runner.active = False
+        return app
+
+    def test_year_required_before_start(self):
+        for caja in ("Hotel", "Albergue"):
+            for ano in ("", "2021", "x1"):
+                app = self.make_form(caja, ano)
+                with patch("src.gui.app.load_settings", return_value=None), patch("src.gui.app.save_settings") as save:
+                    AutoFacturasApp._start(app)
+                app.runner.start.assert_not_called()
+                save.assert_not_called()
+                app.ano.focus_set.assert_called_once()
+
+    def test_form_passes_year_to_runner(self):
+        for caja in ("Hotel", "Albergue", "Restaurante", "Cafeter\u00eda"):
+            app = self.make_form(caja, "19")
+            with patch("src.gui.app.load_settings", return_value=None), patch("src.gui.app.save_settings"):
+                AutoFacturasApp._start(app)
+            app.runner.start.assert_called_once_with(caja, 7, 9, ano="19" if caja in ("Hotel", "Albergue") else None)
+
+    def test_pause_hotkey_is_f10(self):
+        app = Mock()
+        with patch("src.gui.app.keyboard.on_release_key") as register:
+            AutoFacturasApp._register_hotkey(app)
+        register.assert_called_once_with("f10", app._hotkey_toggle, suppress=True)
