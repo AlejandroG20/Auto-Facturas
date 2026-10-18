@@ -13,7 +13,7 @@ def flujo_hotel(numero: int, logger: logging.Logger, stop_event: threading.Event
     write_text(str(numero), "Número de factura", logger, stop_event)
     enter_times(1, logger, stop_event)
     write_text(ano, "Año", logger, stop_event)
-    enter_times(3, logger, stop_event)
+    enter_times(2, logger, stop_event)
     press_key("f12", "F12", logger, stop_event)
     enter_times(0, logger, stop_event)
     write_text(f"FRA {numero}", "Referencia", logger, stop_event)
