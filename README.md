@@ -58,7 +58,7 @@ Se procesarán `260002`, `260003`, `260004` y `260005`. Ambos extremos están in
 
 ### Pausar, continuar y detener
 
-- Pulsa `Ñ` o el botón **Pausar** para detener temporalmente el avance.
+- Pulsa `F10` o el botón **Pausar** para detener temporalmente el avance.
 - Pulsa **Continuar** y utiliza la nueva cuenta atrás para volver a Fortune4.
 - Pulsa **Detener** para cancelar definitivamente. No se enviarán más pulsaciones.
 - También puedes llevar el ratón a la esquina superior izquierda para activar la parada de seguridad.
@@ -91,7 +91,7 @@ Comprueba que ambos campos contienen números y que la última factura no es men
 
 Sigue los comandos que aparecen en la ventana. Esta permanecerá abierta para que puedas leerlos.
 
-**La tecla Ñ no pausa**
+**La tecla F10 no pausa**
 
 En algunos equipos puede ser necesario abrir la aplicación con permisos suficientes para registrar la tecla global.
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import queue
 from pathlib import Path
-from tkinter import messagebox
+from tkinter import messagebox, simpledialog
 
 import customtkinter as ctk
 import keyboard
@@ -243,6 +243,17 @@ class AutoFacturasApp(ctk.CTk):
         if repeats_last_settings(saved, self.caja.get(), start, end) and not messagebox.askyesno(
                 "Posible repetición", "Este rango coincide con la última configuración y podría volver a procesar las mismas facturas. ¿Quieres continuar?", parent=self):
             return
+        ano = None
+        if self.caja.get() in ("Hotel", "Albergue"):
+            while True:
+                ano = simpledialog.askstring("Año de las facturas",
+                                             "Introduce el año con dos cifras (19, 20, 21, etc.):", parent=self)
+                if ano is None:
+                    return
+                ano = ano.strip()
+                if len(ano) == 2 and ano.isascii() and ano.isdigit():
+                    break
+                messagebox.showerror("Año no válido", "Escribe exactamente dos cifras, por ejemplo: 21.", parent=self)
         try:
             save_settings(self.caja.get(), start, end,
                           saved.get("show_welcome", True) if saved else True)
@@ -251,7 +262,7 @@ class AutoFacturasApp(ctk.CTk):
             self._apply_state(AppState.ERROR,
                               "No se pudo guardar la configuración. Comprueba que tienes espacio disponible e inténtalo de nuevo.")
             return
-        if self.runner.start(self.caja.get(), start, end):
+        if self.runner.start(self.caja.get(), start, end, ano=ano):
             self._apply_state(AppState.COUNTDOWN, "Prepárate para seleccionar Fortune4 durante la cuenta atrás.")
             self.progress.set(0)
             self.progress_label.configure(text=f"Factura actual: —  ·  Facturas procesadas: 0 de {end - start + 1}")
@@ -298,9 +309,9 @@ class AutoFacturasApp(ctk.CTk):
 
     def _register_hotkey(self) -> None:
         try:
-            self.hotkey = keyboard.on_release_key("ñ", self._hotkey_toggle, suppress=True)
+            self.hotkey = keyboard.on_release_key("f10", self._hotkey_toggle, suppress=True)
         except Exception as exc:
-            self.logger.warning("No se pudo registrar el atajo Ñ: %s", exc)
+            self.logger.warning("No se pudo registrar el atajo F10: %s", exc)
 
     def _apply_state(self, state: AppState, message: str) -> None:
         policy = STATE_POLICIES[state]
@@ -346,7 +357,7 @@ class AutoFacturasApp(ctk.CTk):
             ("1 - Elige la caja y el rango", "En la ventana principal, selecciona Hotel, Restaurante, Cafetería o Albergue. Escribe el número de la primera y de la última factura: se procesarán todos los números consecutivos, incluidos los dos extremos. Para una sola factura, escribe el mismo número en ambos campos."),
             ("Ejemplo - Cuatro facturas", "Primera factura: 260002    Última factura: 260005    Total: 4\nSe procesarán 260002, 260003, 260004 y 260005. Comprueba que el total coincide con lo que quieres hacer."),
             ("2 - Inicia y vuelve a Fortune4", "Pulsa Iniciar proceso. Tendrás 5 segundos para hacer clic en Fortune4 y dejar activa la pantalla preparada. Las teclas se enviarán a esa ventana. Durante el proceso no escribas, no hagas clic en otros programas ni cambies de ventana."),
-            ("Pausar y continuar", "Pulsa Ñ para pausar desde Fortune4, o usa el botón Pausar. La pausa conserva el punto del proceso. Para seguir, pulsa Continuar y vuelve a Fortune4 durante los 5 segundos de cuenta atrás. Ñ también reanuda, pero lo hace inmediatamente: úsala solo cuando Fortune4 ya está activo."),
+            ("Pausar y continuar", "Pulsa F10 para pausar desde Fortune4, o usa el botón Pausar. La pausa conserva el punto del proceso. Para seguir, pulsa Continuar y vuelve a Fortune4 durante los 5 segundos de cuenta atrás. F10 también reanuda, pero lo hace inmediatamente: úsalo solo cuando Fortune4 ya está activo."),
             ("Detener o resolver un problema", "Detener cancela el proceso; las pulsaciones ya enviadas no se deshacen. Como parada de emergencia, mueve el ratón a la esquina superior izquierda de la pantalla. Si algo no coincide en Fortune4, pausa o detén y revisa la última factura antes de volver a iniciar. No repitas todo el rango sin comprobar lo que ya se hizo."),
             ("3 - Revisa el resultado", "El contador indica las secuencias de teclas terminadas. Al finalizar, comprueba en Fortune4 que las facturas y referencias son correctas: Auto-Facturas no verifica el resultado contable. El detalle del proceso te ayuda a consultar por qué factura iba."),
             ("Recuperar los datos de la última vez", "Recuperar Última configuración rellena los campos, pero no inicia el proceso. Revisa la caja y el rango. Si coinciden con la última ejecución, aparecerá un aviso para evitar una repetición accidental."),

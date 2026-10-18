@@ -28,12 +28,16 @@ class AutomationRunner:
     def active(self) -> bool:
         return bool(self._thread and self._thread.is_alive())
 
-    def start(self, caja: str, initial: int, final: int) -> bool:
+    def start(self, caja: str, initial: int, final: int, ano: str | None = None) -> bool:
         with self._lock:
             if self.active:
                 return False
+            if caja in ("Hotel", "Albergue") and (
+                    not isinstance(ano, str) or len(ano) != 2
+                    or not ano.isascii() or not ano.isdigit()):
+                raise ValueError("Introduce el año con dos cifras.")
             self.control = ExecutionControl()
-            self._thread = threading.Thread(target=self._run, args=(caja, initial, final),
+            self._thread = threading.Thread(target=self._run, args=(caja, initial, final, ano),
                                             name="auto-facturas", daemon=False)
             self._thread.start()
             return True
@@ -56,7 +60,7 @@ class AutomationRunner:
         if self._thread:
             self._thread.join(timeout)
 
-    def _run(self, caja: str, initial: int, final: int) -> None:
+    def _run(self, caja: str, initial: int, final: int, ano: str | None = None) -> None:
         completed, total = 0, final - initial + 1
         try:
             self.emit("state", state="cuenta atrás", message="Selecciona Fortune4 durante la cuenta atrás.")
@@ -66,7 +70,10 @@ class AutomationRunner:
             for number in range(initial, final + 1):
                 self.emit("progress", current=number, completed=completed, total=total)
                 self.logger.info("%s | FACTURA %d | INICIO", caja.upper(), number)
-                FLOWS[caja](number, self.logger, self.control)
+                if caja in ("Hotel", "Albergue"):
+                    FLOWS[caja](number, self.logger, self.control, ano=ano)
+                else:
+                    FLOWS[caja](number, self.logger, self.control)
                 completed += 1
                 self.logger.info("%s | FACTURA %d | FIN", caja.upper(), number)
                 self.emit("progress", current=number, completed=completed, total=total)
